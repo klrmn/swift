@@ -13,6 +13,11 @@ The virtual machine will emulate running a four node Swift cluster.
 
 * Create guest virtual machine from the Ubuntu image.
 
+* Run apt-get update; apt-get upgrade
+
+* Note: whenever you see "<your-user-name>:<your-group-name>" in this document, be sure to replace it
+with your actual user name and group name.
+
 Additional information about setting up a Swift development snapshot on other distributions is
 available on the wiki at http://wiki.openstack.org/SAIOInstructions.
 
@@ -21,27 +26,18 @@ Installing dependencies and the core code
 -----------------------------------------
 * As root on guest (you'll have to log in as you, then `sudo su -`):
 
-  #. `apt-get install python-software-properties`
-  #. `add-apt-repository ppa:swift-core/release`
-  #. `apt-get update`
-  #. `apt-get install curl gcc git-core memcached python-coverage python-dev
-     python-nose python-setuptools python-simplejson python-xattr sqlite3
-     xfsprogs python-eventlet python-greenlet python-pastedeploy
-     python-netifaces python-pip`
-  #. `pip install mock`
+  #. `apt-get install python-software-properties curl gcc git-core memcached
+     python-coverage python-dev python-nose python-setuptools python-simplejson
+     python-xattr sqlite3 xfsprogs python-eventlet python-greenlet
+     python-pastedeploy python-netifaces python-pip`
+  #. `pip install mock tox`
   #. Install anything else you want, like screen, ssh, vim, etc.
 
 * On Fedora, log in as root and do:
 
-  #. `yum install openstack-swift openstack-swift-proxy
-     openstack-swift-account openstack-swift-container openstack-swift-object`
   #. `yum install xinetd rsync`
   #. `yum install memcached`
-  #. `yum install python-netifaces python-nose python-mock`
-
-  This installs all necessary dependencies, and also creates user `swift`
-  and group `swift`. So, `swift:swift` ought to be used in every place where
-  this manual calls for `<your-user-name>:<your-group-name>`.
+  #. `yum install python-netifaces python-nose python-mock python-tox`
 
   Ensure that you are installing the version of Swift that corresponds to
   this document. If not, enable the correct update repositories.
@@ -65,10 +61,10 @@ another device when creating the VM, and follow these instructions.
   #. `mkdir /mnt/sdb1/1 /mnt/sdb1/2 /mnt/sdb1/3 /mnt/sdb1/4`
   #. `chown <your-user-name>:<your-group-name> /mnt/sdb1/*`
   #. `mkdir /srv`
-  #. `for x in {1..4}; do ln -s /mnt/sdb1/$x /srv/$x; done`
+  #. `for x in {1..4}; do sudo ln -s /mnt/sdb1/$x /srv/$x; done`
   #. `mkdir -p /etc/swift/object-server /etc/swift/container-server /etc/swift/account-server /srv/1/node/sdb1 /srv/2/node/sdb2 /srv/3/node/sdb3 /srv/4/node/sdb4 /var/run/swift`
-  #. `chown -R <your-user-name>:<your-group-name> /etc/swift /srv/[1-4]/ /var/run/swift` -- **Make sure to include the trailing slash after /srv/[1-4]/**
-  #. Add to `/etc/rc.local` (before the `exit 0`)::
+  #. `chown -R <your-user-name>:<your-group-name> /etc/swift /var/run/swift /srv/[1-4]/` -- **Make sure to include the trailing slash after /srv/[1-4]/**
+  #. Execute the following lines, as well as adding them to `/etc/rc.local` (before the `exit 0`)::
 
         mkdir -p /var/cache/swift /var/cache/swift2 /var/cache/swift3 /var/cache/swift4
         chown <your-user-name>:<your-group-name> /var/cache/swift*
@@ -94,10 +90,10 @@ If you want to use a loopback device instead of another partition, follow these 
   #. `mount /mnt/sdb1`
   #. `mkdir /mnt/sdb1/1 /mnt/sdb1/2 /mnt/sdb1/3 /mnt/sdb1/4`
   #. `chown <your-user-name>:<your-group-name> /mnt/sdb1/*`
-  #. `for x in {1..4}; do ln -s /mnt/sdb1/$x /srv/$x; done`
+  #. `for x in {1..4}; do sudo ln -s /mnt/sdb1/$x /srv/$x; done`
   #. `mkdir -p /etc/swift/object-server /etc/swift/container-server /etc/swift/account-server /srv/1/node/sdb1 /srv/2/node/sdb2 /srv/3/node/sdb3 /srv/4/node/sdb4 /var/run/swift`
-  #. `chown -R <your-user-name>:<your-group-name> /etc/swift /srv/[1-4]/ /var/run/swift` -- **Make sure to include the trailing slash after /srv/[1-4]/**
-  #. Add to `/etc/rc.local` (before the `exit 0`)::
+  #. `chown -R <your-user-name>:<your-group-name> /etc/swift /var/run/swift /srv/[1-4]/` -- **Make sure to include the trailing slash after /srv/[1-4]/**
+  #. Execute the following lines, as well as adding them to `/etc/rc.local` (before the `exit 0`)::
 
         mkdir -p /var/cache/swift /var/cache/swift2 /var/cache/swift3 /var/cache/swift4
         chown <your-user-name>:<your-group-name> /var/cache/swift*
@@ -273,9 +269,12 @@ Do these commands as you on guest.
   #. Edit `~/.bashrc` and add to the end::
 
         export SWIFT_TEST_CONFIG_FILE=/etc/swift/test.conf
-        export PATH=${PATH}:~/bin
+        export PATH=${PATH}:/home/<username>/bin
 
   #. `. ~/.bashrc`
+
+Note: Some development operations require hard-linking of files, which is not
+available on VirtualBox shared folders. Please plan accordingly.
 
 ---------------------
 Configuring each node
