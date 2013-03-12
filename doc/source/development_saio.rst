@@ -15,8 +15,9 @@ cluster.
 
 * Get Ubuntu 12.04 LTS (Precise Pangolin) 64 bit server image.
 
-* Create guest virtual machine from the Ubuntu image. Set the hostname to
-  `saio` and the initial user to `swift`.
+* Create guest virtual machine from the Ubuntu image.
+  In addition to the required primary drive, create 4 additional hard disks.
+  Set the hostname to `saio` and the initial user to `swift`.
 
 * Run apt-get update; apt-get upgrade
 
@@ -29,16 +30,16 @@ Additional information about setting up a Swift development snapshot on other
 distributions is available on the wiki at
 http://wiki.openstack.org/SAIOInstructions.
 
------------------------------------------
-Installing dependencies and the core code
------------------------------------------
-* As root on guest (you'll have to log in as you, then `sudo su -`):
+-----------------------
+Installing dependencies
+-----------------------
+* With `sudo` on the guest:
 
-  #. `apt-get install python-software-properties curl gcc git memcached
+  #. `sudo apt-get install python-software-properties curl gcc git memcached
      python-coverage python-dev python-nose python-setuptools python-simplejson
      python-xattr sqlite3 xfsprogs python-eventlet python-greenlet
      python-pastedeploy python-netifaces python-pip python-sphinx`
-  #. `pip install mock tox dnspython`
+  #. `sudo pip install mock tox dnspython`
   #. Install anything else you want, like screen, ssh, vim, etc.
 
 -----------------------------
@@ -47,14 +48,17 @@ Setting up Drives for Storage
 
 These instructions are for configuring locally-attached drives as storage
 drives. You may choose to use a large file mounted as a loopback device, but
-that option is not documented here.
+that option is not documented here. The commands in this section should be
+executed with sudo.
 
   #. `mkdir -p /srv/node`
+  #. `mkdir -p /srv/node/d{1..4}`
   #. `mkfs.xfs -f -i size=512 -L d1 /dev/sdb`
   #. `mkfs.xfs -f -i size=512 -L d2 /dev/sdc`
   #. `mkfs.xfs -f -i size=512 -L d3 /dev/sdd`
   #. `mkfs.xfs -f -i size=512 -L d4 /dev/sde`
   #. Edit `/etc/fstab` and add::
+
       # swift data drives
       LABEL=d1  /srv/node/d1  xfs noatime,nodiratime,nobarrier,logbufs=8,inode64 0 0
       LABEL=d2  /srv/node/d2  xfs noatime,nodiratime,nobarrier,logbufs=8,inode64 0 0
@@ -166,7 +170,7 @@ Setting up rsync
 Starting memcached
 ------------------
 
-Ensure that the following line is on /etc/devault/memcached::
+Ensure that the following line is on /etc/default/memcached::
 
     ENABLE_MEMCACHED=yes
 
@@ -252,402 +256,20 @@ Do these commands as the user "swift" on the guest VM.
 Configuring each node
 ---------------------
 
-Sample configuration files are provided with all defaults in line-by-line
-comments. The sample config files are provided in the ``etc`` directory of
-the swift source code.
+Sample configuration files that have all defaults in line-by-line
+comments are provided in the ``etc`` directory of the swift source code.
+Configuration files suitable for the Swift All In One virtual machine can
+be found in the ``etc\saio`` directory.
 
   #. `sudo mkdir -p /etc/swift`
   #. `sudo chown swift:swift /etc/swift`
-  #. `mkdir /etc/swift/{account,container,object}-server`
-  #. Create `/etc/swift/proxy-server.conf`::
-
-      [DEFAULT]
-      bind_port = 8080
-      user = swift
-      log_facility = LOG_LOCAL1
-      log_level = DEBUG
-      eventlet_debug = true
-
-      [pipeline:main]
-      pipeline = catch_errors healthcheck cache tempauth proxy-logging proxy-server
-
-      [app:proxy-server]
-      use = egg:swift#proxy
-      allow_account_management = true
-      account_autocreate = true
-
-      [filter:tempauth]
-      use = egg:swift#tempauth
-      user_admin_admin = admin .admin .reseller_admin
-      user_test_tester = testing .admin
-      user_test2_tester2 = testing2 .admin http://192.168.52.2:8080/v1/AUTH_test2
-      user_test4_tester4 = testing4 .admin http://192.168.52.2:8080/v1/AUTH_test4
-      user_test_tester3 = testing3
-      user_demo_demo = demo .admin http://192.168.52.2:8080/v1/AUTH_abc
-
-      [filter:catch_errors]
-      use = egg:swift#catch_errors
-
-      [filter:healthcheck]
-      use = egg:swift#healthcheck
-
-      [filter:cache]
-      use = egg:swift#memcache
-
-      [filter:proxy-logging]
-      use = egg:swift#proxy_logging
-
-  #. Create `/etc/swift/swift.conf`::
-
-        SUFF=`python -c 'import uuid; print uuid.uuid4().hex'`
-        cat <<EOF >/etc/swift/swift.conf
-        [swift-hash]
-        swift_hash_path_suffix = $SUFF
-        EOF
-
-  #. Create `/etc/swift/account-server/1.conf`::
-
-        [DEFAULT]
-        devices = /srv/node/
-        bind_port = 6012
-        user = swift
-        log_facility = LOG_LOCAL2
-        recon_cache_path = /var/cache/swift
-        eventlet_debug = true
-        log_level = DEBUG
-
-        [pipeline:main]
-        pipeline = recon account-server
-
-        [app:account-server]
-        use = egg:swift#account
-
-        [filter:recon]
-        use = egg:swift#recon
-
-        [account-replicator]
-        vm_test_mode = yes
-
-        [account-auditor]
-
-        [account-reaper]
-
-  #. Create `/etc/swift/account-server/2.conf`::
-
-        [DEFAULT]
-        devices = /srv/node/
-        bind_port = 6022
-        user = swift
-        log_facility = LOG_LOCAL3
-        recon_cache_path = /var/cache/swift
-        eventlet_debug = true
-        log_level = DEBUG
-
-        [pipeline:main]
-        pipeline = recon account-server
-
-        [app:account-server]
-        use = egg:swift#account
-
-        [filter:recon]
-        use = egg:swift#recon
-
-        [account-replicator]
-        vm_test_mode = yes
-
-        [account-auditor]
-
-        [account-reaper]
-
-  #. Create `/etc/swift/account-server/3.conf`::
-
-        [DEFAULT]
-        devices = /srv/node/
-        bind_port = 6032
-        user = swift
-        log_facility = LOG_LOCAL4
-        recon_cache_path = /var/cache/swift
-        eventlet_debug = true
-        log_level = DEBUG
-
-        [pipeline:main]
-        pipeline = recon account-server
-
-        [app:account-server]
-        use = egg:swift#account
-
-        [filter:recon]
-        use = egg:swift#recon
-
-        [account-replicator]
-        vm_test_mode = yes
-
-        [account-auditor]
-
-        [account-reaper]
-
-  #. Create `/etc/swift/account-server/4.conf`::
-
-        [DEFAULT]
-        devices = /srv/node/
-        bind_port = 6042
-        user = swift
-        log_facility = LOG_LOCAL5
-        recon_cache_path = /var/cache/swift
-        eventlet_debug = true
-        log_level = DEBUG
-
-        [pipeline:main]
-        pipeline = recon account-server
-
-        [app:account-server]
-        use = egg:swift#account
-
-        [filter:recon]
-        use = egg:swift#recon
-
-        [account-replicator]
-        vm_test_mode = yes
-
-        [account-auditor]
-
-        [account-reaper]
-
-  #. Create `/etc/swift/container-server/1.conf`::
-
-        [DEFAULT]
-        devices = /srv/node/
-        bind_port = 6011
-        user = swift
-        log_facility = LOG_LOCAL2
-        recon_cache_path = /var/cache/swift
-        eventlet_debug = true
-        log_level = DEBUG
-
-        [pipeline:main]
-        pipeline = recon container-server
-
-        [app:container-server]
-        use = egg:swift#container
-
-        [filter:recon]
-        use = egg:swift#recon
-
-        [container-replicator]
-        vm_test_mode = yes
-
-        [container-updater]
-
-        [container-auditor]
-
-        [container-sync]
-
-  #. Create `/etc/swift/container-server/2.conf`::
-
-        [DEFAULT]
-        devices = /srv/node/
-        bind_port = 6021
-        user = swift
-        log_facility = LOG_LOCAL3
-        recon_cache_path = /var/cache/swift
-        eventlet_debug = true
-        log_level = DEBUG
-
-        [pipeline:main]
-        pipeline = recon container-server
-
-        [app:container-server]
-        use = egg:swift#container
-
-        [filter:recon]
-        use = egg:swift#recon
-
-        [container-replicator]
-        vm_test_mode = yes
-
-        [container-updater]
-
-        [container-auditor]
-
-        [container-sync]
-
-  #. Create `/etc/swift/container-server/3.conf`::
-
-        [DEFAULT]
-        devices = /srv/node/
-        bind_port = 6031
-        user = swift
-        log_facility = LOG_LOCAL4
-        recon_cache_path = /var/cache/swift
-        eventlet_debug = true
-        log_level = DEBUG
-
-        [pipeline:main]
-        pipeline = recon container-server
-
-        [app:container-server]
-        use = egg:swift#container
-
-        [filter:recon]
-        use = egg:swift#recon
-
-        [container-replicator]
-        vm_test_mode = yes
-
-        [container-updater]
-
-        [container-auditor]
-
-        [container-sync]
-
-  #. Create `/etc/swift/container-server/4.conf`::
-
-        [DEFAULT]
-        devices = /srv/node/
-        bind_port = 6041
-        user = swift
-        log_facility = LOG_LOCAL5
-        recon_cache_path = /var/cache/swift
-        eventlet_debug = true
-        log_level = DEBUG
-
-        [pipeline:main]
-        pipeline = recon container-server
-
-        [app:container-server]
-        use = egg:swift#container
-
-        [filter:recon]
-        use = egg:swift#recon
-
-        [container-replicator]
-        vm_test_mode = yes
-
-        [container-updater]
-
-        [container-auditor]
-
-        [container-sync]
-
-
-  #. Create `/etc/swift/object-server/1.conf`::
-
-        [DEFAULT]
-        devices = /srv/node/
-        bind_port = 6010
-        user = swift
-        log_facility = LOG_LOCAL2
-        recon_cache_path = /var/cache/swift
-        eventlet_debug = true
-        log_level = DEBUG
-        disable_fallocate = true
-
-        [pipeline:main]
-        pipeline = recon object-server
-
-        [app:object-server]
-        use = egg:swift#object
-
-        [filter:recon]
-        use = egg:swift#recon
-
-        [object-replicator]
-        vm_test_mode = yes
-
-        [object-updater]
-
-        [object-auditor]
-
-  #. Create `/etc/swift/object-server/2.conf`::
-
-        [DEFAULT]
-        devices = /srv/node/
-        bind_port = 6020
-        user = swift
-        log_facility = LOG_LOCAL3
-        recon_cache_path = /var/cache/swift
-        eventlet_debug = true
-        log_level = DEBUG
-        disable_fallocate = true
-
-        [pipeline:main]
-        pipeline = recon object-server
-
-        [app:object-server]
-        use = egg:swift#object
-
-        [filter:recon]
-        use = egg:swift#recon
-
-        [object-replicator]
-        vm_test_mode = yes
-
-        [object-updater]
-
-        [object-auditor]
-
-  #. Create `/etc/swift/object-server/3.conf`::
-
-        [DEFAULT]
-        devices = /srv/node/
-        bind_port = 6030
-        user = swift
-        log_facility = LOG_LOCAL4
-        recon_cache_path = /var/cache/swift
-        eventlet_debug = true
-        log_level = DEBUG
-        disable_fallocate = true
-
-        [pipeline:main]
-        pipeline = recon object-server
-
-        [app:object-server]
-        use = egg:swift#object
-
-        [filter:recon]
-        use = egg:swift#recon
-
-        [object-replicator]
-        vm_test_mode = yes
-
-        [object-updater]
-
-        [object-auditor]
-
-  #. Create `/etc/swift/object-server/4.conf`::
-
-        [DEFAULT]
-        devices = /srv/node/
-        bind_port = 6040
-        user = swift
-        log_facility = LOG_LOCAL5
-        recon_cache_path = /var/cache/swift
-        eventlet_debug = true
-        log_level = DEBUG
-        disable_fallocate = true
-
-        [pipeline:main]
-        pipeline = recon object-server
-
-        [app:object-server]
-        use = egg:swift#object
-
-        [filter:recon]
-        use = egg:swift#recon
-
-        [object-replicator]
-        vm_test_mode = yes
-
-        [object-updater]
-
-        [object-auditor]
-
+  #. `cp -R ~/swift/etc/saio/* /etc/swift/`
 
 ------------------------------------
 Setting up scripts for running Swift
 ------------------------------------
 
-  #. Create `~/bin/resetswift.`::
+  #. Create `~/bin/resetswift`::
 
       #!/bin/bash
 
@@ -727,10 +349,10 @@ Setting up scripts for running Swift
 
   #. `chmod +x ~/bin/*`
   #. `remakerings`
-  #. `cp ~/swift/test/sample.conf /etc/swift/test.conf`
   #. `cd ~/swift; ./.unittests` (This will generate a lot of output, but one of
      the last lines of the output should be "OK".)
   #. `startmain` (The ``Unable to increase file descriptor limit.  Running as non-root?`` warnings are expected and ok.)
+  #. `startrest`
   #. Get an `X-Storage-Url` and `X-Auth-Token`:
      `curl -i -H 'X-Storage-User: test:tester' -H 'X-Storage-Pass: testing' http://127.0.0.1:8080/auth/v1.0`
   #. Check that you can GET account:
