@@ -264,6 +264,13 @@ be found in the ``etc\saio`` directory.
   #. `sudo mkdir -p /etc/swift`
   #. `sudo chown swift:swift /etc/swift`
   #. `cp -R ~/swift/etc/saio/* /etc/swift/`
+  #. Create `/etc/swift/swift.conf`::
+
+        SUFF=`python -c 'import uuid; print uuid.uuid4().hex'`
+        cat <<EOF >/etc/swift/swift.conf
+        [swift-hash]
+        swift_hash_path_suffix = $SUFF
+        EOF
 
 ------------------------------------
 Setting up scripts for running Swift
