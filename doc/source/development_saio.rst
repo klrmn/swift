@@ -176,7 +176,7 @@ Setting up rsync
 
   #. `service rsync restart`
 
-Other distributions mey run rsyncd off xinetd (SLES and RHEL), or directly
+Other distributions may run rsyncd off xinetd (SLES and RHEL), or directly
 from systemd (Fedora 18). Use local conventions to enable and start rsyncd.
 
 ------------------
@@ -366,6 +366,12 @@ Setting up scripts for running Swift
         #!/bin/bash
 
         swift-init rest start
+
+  #. Create `~/bin/stopall`::
+
+        #!/bin/bash
+
+        swift-init all stop
 
   #. `chmod +x ~/bin/*`
   #. `remakerings`
