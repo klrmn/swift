@@ -13,11 +13,17 @@ This section documents setting up a virtual machine for doing Swift
 development. The virtual machine will emulate running a four node Swift
 cluster.
 
-* Get Ubuntu 12.04 LTS (Precise Pangolin) 64 bit server image.
+* Get Ubuntu 12.04 LTS (Precise Pangolin) 64 bit server image. Fedora 16 or
+  later works too, but this guide is focused on Ubuntu. Substitute your
+  local commands to suit, e.g. "yum update" for "apt-get update".
 
 * Create guest virtual machine from the Ubuntu image.
   In addition to the required primary drive, create 4 additional hard disks.
-  Set the hostname to `saio` and the initial user to `swift`.
+  Instructions below presume that they are visible in the VM as emulated
+  SCSI drives /dev/sdX. Substitute /dev/vdX if necessary.
+
+* Set the hostname to `saio` and the initial user to `swift` (this step
+  is specific to Ubuntu).
 
 * Run apt-get update; apt-get upgrade
 
@@ -33,6 +39,7 @@ http://wiki.openstack.org/SAIOInstructions.
 -----------------------
 Installing dependencies
 -----------------------
+
 * With `sudo` on the guest:
 
   #. `sudo apt-get install python-software-properties curl gcc git memcached
@@ -41,6 +48,9 @@ Installing dependencies
      python-pastedeploy python-netifaces python-pip python-sphinx`
   #. `sudo pip install mock tox dnspython`
   #. Install anything else you want, like screen, ssh, vim, etc.
+
+Other distributions may use slightly different package names. For example,
+the main package is named openstack-swift in Fedora.
 
 -----------------------------
 Setting up Drives for Storage
@@ -165,6 +175,9 @@ Setting up rsync
       RSYNC_ENABLE=true
 
   #. `service rsync restart`
+
+Other distributions mey run rsyncd off xinetd (SLES and RHEL), or directly
+from systemd (Fedora 18). Use local conventions to enable and start rsyncd.
 
 ------------------
 Starting memcached
