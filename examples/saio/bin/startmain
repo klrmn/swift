@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ ! -d /var/run/swift ]; then
+    sudo mkdir -p /var/run/swift
+    sudo chown -R <your-user-name>:<your-group-name> /var/run/swift
+fi
+
+swift-init main start

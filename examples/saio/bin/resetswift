@@ -1,0 +1,31 @@
+#!/bin/bash
+
+swift-init all stop
+
+sudo umount /dev/sdb
+sudo mkfs.xfs -f -i size=512 -L d1 /dev/sdb
+
+sudo umount /dev/sdc
+sudo mkfs.xfs -f -i size=512 -L d2 /dev/sdc
+
+sudo umount /dev/sdd
+sudo mkfs.xfs -f -i size=512 -L d3 /dev/sdd
+
+sudo umount /dev/sde
+sudo mkfs.xfs -f -i size=512 -L d4 /dev/sde
+
+sudo mount -a
+
+sudo chown -R <your-user-name>:<your-group-name> /srv/node/
+
+sudo rm -rf /var/log/swift
+sudo mkdir -p /var/log/swift/hourly
+sudo chown -R syslog:adm /var/log/swift
+
+sudo mkdir -p /var/cache/swift
+sudo chown -R <your-user-name>:<your-group-name> /var/cache/swift
+
+find /var/cache/swift* -type f -name *.recon -exec rm -f {} \;
+
+sudo service rsyslog restart
+sudo service memcached restart
